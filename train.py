@@ -28,6 +28,16 @@ from eval import SegEvaluator
 import shutil
 
 from tensorboardX import SummaryWriter
+from utils.split_dataset_cutting import split_dataset
+
+# 设置路径
+sub_img_folder = r'/home/czh/Sigma-main/datasets/Soil/Cutting'
+train_txt_path = r'/home/czh/Sigma-main/datasets/Soil/train.txt'
+test_txt_path = r'/home/czh/Sigma-main/datasets/Soil/test.txt'
+extra_save_dir = r'/home/czh/Sigma-main/models/encoders/selective_scan/datasets/Soil'
+
+# 调用函数分割数据集
+split_dataset(sub_img_folder, train_txt_path, test_txt_path, extra_save_dir)
 
 parser = argparse.ArgumentParser()
 logger = get_logger()
@@ -47,12 +57,12 @@ with Engine(custom_parser=parser) as engine:
         from configs.config_nyu import config
     elif dataset_name == 'sun':
         from configs.config_sunrgbd import config
+    elif dataset_name == 'soil':
+        from configs.config_Soil import config
     else:
         raise ValueError('Not a valid dataset name')
 
-    print("=======================================")
     print(config.tb_dir)
-    print("=======================================")
 
     cudnn.benchmark = True
     seed = config.seed
@@ -64,6 +74,83 @@ with Engine(custom_parser=parser) as engine:
 
     # data loader
     train_loader, train_sampler = get_train_loader(engine, RGBXDataset, config)
+
+    # 在这里插入标签分布检查代码
+    # print("正在检查训练集标签分布...")
+    # label_counts = {i: 0 for i in range(256)}  # 初始化所有可能的标签值
+    # total_pixels = 0
+
+    # for batch_idx, batch in enumerate(tqdm(train_loader, desc="处理批次")):
+    #     if batch_idx == 0:  # 只打印第一个批次的信息
+    #         print("\nbatch 的结构:")
+    #         for key, value in batch.items():
+    #             if isinstance(value, torch.Tensor):
+    #                 print(f"  {key}: 形状 {value.shape}, 类型 {value.dtype}")
+    #             else:
+    #                 print(f"  {key}: 类型 {type(value)}")
+            
+    #         print("\n'label' 张量的一些统计信息:")
+    #         labels = batch['label']
+    #         print(f"  形状: {labels.shape}")
+    #         print(f"  数据类型: {labels.dtype}")
+    #         print(f"  最小值: {labels.min().item()}")
+    #         print(f"  最大值: {labels.max().item()}")
+    #         print(f"  唯一值: {torch.unique(labels).tolist()}")
+            
+    #         print("\n第一张图像的标签的前10x10像素:")
+    #         print(labels[0, :10, :10])
+            
+    #         # 如果batch中包含图像数据,也可以打印图像的一些信息
+    #         if 'data' in batch:
+    #             print("\n'data' 张量的一些统计信息:")
+    #             data = batch['data']
+    #             print(f"  形状: {data.shape}")
+    #             print(f"  数据类型: {data.dtype}")
+    #             print(f"  最小值: {data.min().item()}")
+    #             print(f"  最大值: {data.max().item()}")
+        
+    #     labels = batch['label']
+    #     if torch.any(labels == 255):
+    #         print(f"\n在批次 {batch_idx} 中发现255标签")
+    #         print(f"255标签的位置: {(labels == 255).nonzero()}")
+    #         print(f"255标签的数量: {(labels == 255).sum().item()}")
+            
+    #         # 检查255是否主要出现在边缘
+    #         edge_mask = torch.zeros_like(labels, dtype=torch.bool)
+    #         edge_mask[:, 0, :] = edge_mask[:, -1, :] = edge_mask[:, :, 0] = edge_mask[:, :, -1] = True
+    #         edge_255 = ((labels == 255) & edge_mask).sum().item()
+    #         total_255 = (labels == 255).sum().item()
+    #         print(f"边缘255标签占比: {edge_255 / total_255 * 100:.2f}%")
+
+    #         if batch_idx > 5:  # 只检查前几个批次
+    #             break
+
+    #     # 处理批次的其余部分...
+    #     unique_values, counts = torch.unique(labels, return_counts=True)
+    #     for value, count in zip(unique_values.tolist(), counts.tolist()):
+    #         label_counts[value] += count
+    #         total_pixels += count
+
+    # print("\n标签分布统计：")
+    # for index, count in sorted(label_counts.items()):
+    #     if count > 0:
+    #         percentage = (count / total_pixels) * 100
+    #         print(f"  标签 {index}: {count} 像素 ({percentage:.2f}%)")
+
+    # print(f"\n总像素数：{total_pixels}")
+
+    # if 255 in label_counts:
+    #     background_percentage = (label_counts[255] / total_pixels) * 100
+    #     print(f"背景像素 (255) 占比: {background_percentage:.2f}%")
+
+    # # 检查是否有超出预期范围的标签
+    # unexpected_labels = [label for label in label_counts if label_counts[label] > 0 and label not in range(config.num_classes) and label != 255]
+    # if unexpected_labels:
+    #     print("\n警告：发现意外的标签值：")
+    #     for label in unexpected_labels:
+    #         print(f"  标签 {label}: {label_counts[label]} 像素")
+
+
 
     if (engine.distributed and (engine.local_rank == 0)) or (not engine.distributed):
         tb_dir = config.tb_dir + '/{}'.format(time.strftime("%b%d_%d-%H-%M", time.localtime()))
@@ -159,6 +246,25 @@ with Engine(custom_parser=parser) as engine:
             imgs = imgs.cuda(non_blocking=True)
             gts = gts.cuda(non_blocking=True)
             modal_xs = modal_xs.cuda(non_blocking=True)
+                # 在这里添加打印语句
+            # print("标签值t的统计信息:")
+            # print(f"最小值: {gts.min().item()}")
+            # print(f"最大值: {gts.max().item()}")
+            # print(f"唯一值: {torch.unique(gts).tolist()}")
+            # print(f"形状: {gts.shape}")
+            # print(f"数据类型: {gts.dtype}")
+            # print(f"类别数量: {config.num_classes}")
+
+            # if gts.numel() <= 100:
+            #     print(f"所有标签值: {gts.tolist()}")
+            # else:
+            #     print(f"前100个标签值: {gts.flatten()[:100].tolist()}")
+
+            # invalid_labels = (gts < 0) | (gts >= config.num_classes)
+            # if invalid_labels.any():
+            #     print("警告: 发现无效的标签值!")
+            #     print(f"无效标签的位置: {torch.nonzero(invalid_labels)}")
+            #     print(f"无效标签的值: {gts[invalid_labels]}")
 
             aux_rate = 0.2
             loss = model(imgs, modal_xs, gts)
@@ -225,6 +331,12 @@ with Engine(custom_parser=parser) as engine:
                                                 is_flip=config.eval_flip, devices=[model.device],
                                                 verbose=False, config=config,
                                                 )
+                        print(f"Checkpoint directory: {config.checkpoint_dir}")
+                        print(f"Checkpoint directory exists: {os.path.exists(config.checkpoint_dir)}")
+                        print(f"Epoch: {epoch}")
+                        print(f"Val log file: {config.val_log_file}")
+                        print(f"Link val log file: {config.link_val_log_file}")
+
                         _, mean_IoU = segmentor.run(config.checkpoint_dir, str(epoch), config.val_log_file,
                                     config.link_val_log_file)
                         print('mean_IoU:', mean_IoU)
@@ -252,7 +364,7 @@ with Engine(custom_parser=parser) as engine:
                     segmentor = SegEvaluator(dataset=val_dataset, class_num=config.num_classes,
                                             norm_mean=config.norm_mean, norm_std=config.norm_std,
                                             network=model, multi_scales=config.eval_scale_array,
-                                            is_flip=config.eval_flip, devices=[1,2,3],
+                                            is_flip=config.eval_flip, devices=[0],
                                             verbose=False, config=config,
                                             )
                     _, mean_IoU = segmentor.run(config.checkpoint_dir, str(epoch), config.val_log_file,

@@ -41,7 +41,7 @@ class TrainPre(object):
         crop_pos = generate_random_crop_pos(rgb.shape[:2], crop_size)
 
         p_rgb, _ = random_crop_pad_to_shape(rgb, crop_pos, crop_size, 0)
-        p_gt, _ = random_crop_pad_to_shape(gt, crop_pos, crop_size, 255)
+        p_gt, _ = random_crop_pad_to_shape(gt, crop_pos, crop_size, 5)
         p_modal_x, _ = random_crop_pad_to_shape(modal_x, crop_pos, crop_size, 0)
 
         p_rgb = p_rgb.transpose(2, 0, 1)

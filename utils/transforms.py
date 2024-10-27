@@ -10,6 +10,7 @@ import collections
 
 
 def get_2dshape(shape, *, zero=True):
+    collections.Iterable = collections.abc.Iterable
     if not isinstance(shape, collections.Iterable):
         shape = int(shape)
         shape = (shape, shape)

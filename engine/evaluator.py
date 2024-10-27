@@ -78,7 +78,10 @@ class Evaluator(object):
             if os.path.exists(model_path):
                 models = [os.path.join(model_path, 'epoch-%s.pth' % model_indice), ]
             else:
-                models = [None]
+                os.makedirs(model_path)
+                logger.info(f"创建了模型路径: {model_path}")
+                models = [os.path.join(model_path, 'epoch-%s.pth' % model_indice), ]
+                print("checkpoint文件路径已创建")
 
         results = open(log_file, 'a')
         link_file(log_file, log_file_link)
@@ -138,7 +141,11 @@ class Evaluator(object):
             if os.path.exists(model_path):
                 models = [os.path.join(model_path, 'epoch-%s.pth' % model_indice), ]
             else:
-                models = [None]
+                # 如果路径不存在，就创建路径
+                os.makedirs(model_path)
+                logger.info(f"创建了模型路径: {model_path}")
+                models = [os.path.join(model_path, 'epoch-%s.pth' % model_indice), ]
+                print("checkpoint文件路径已创建")
 
         if not os.path.exists(log_file):
             log_dir = os.path.dirname(log_file)

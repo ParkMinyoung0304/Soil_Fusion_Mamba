@@ -23,7 +23,8 @@ except:
 
 # an alternative for mamba_ssm
 try:
-    from selective_scan import selective_scan_fn as selective_scan_fn_v1
+    from selective_scan import selective_scan_fn
+    # from selective_scan import selective_scan_fn as selective_scan_fn_v1
 except:
     pass
 
@@ -1506,7 +1507,8 @@ class Cross_Mamba_Attention_SSM(nn.Module):
         return D
 
     def forward(self, x_rgb: torch.Tensor, x_e: torch.Tensor):
-        selective_scan = selective_scan_fn_v1
+        # selective_scan = selective_scan_fn_v1
+        selective_scan = selective_scan_fn
         B, L, d = x_rgb.shape
         x_rgb = x_rgb.permute(0, 2, 1)
         x_e = x_e.permute(0, 2, 1)

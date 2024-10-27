@@ -65,7 +65,7 @@ class Engine(object):
 
     def inject_default_parser(self):
         p = self.parser
-        p.add_argument('-d', '--devices', default='',
+        p.add_argument('-d', '--devices', default='0',
                        help='set data parallel training')
         p.add_argument('-c', '--continue', type=extant_file,
                        metavar="FILE",
@@ -77,7 +77,7 @@ class Engine(object):
                        default='16005',
                        dest="port",
                        help='port for init_process_group')
-        p.add_argument('--dataset_name', '-n', default='mfnet', type=str)
+        p.add_argument('--dataset_name', '-n', default='soil', type=str)
 
     def register_state(self, **kwargs):
         self.state.register(**kwargs)
