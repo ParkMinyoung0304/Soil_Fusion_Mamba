@@ -68,9 +68,9 @@ def split_dataset(sub_img_folder, train_txt_path, test_txt_path, extra_save_dir=
 
 # 如果直接运行此脚本,则使用默认参数
 if __name__ == "__main__":
-    sub_img_folder = r'/home/czh/Sigma-main/datasets/Soil/Cutting'
-    train_txt_path = r'/home/czh/Sigma-main/datasets/Soil/train.txt'
-    test_txt_path = r'/home/czh/Sigma-main/datasets/Soil/test.txt'
-    extra_save_dir = r'/home/czh/Sigma-main/models/encoders/selective_scan/datasets/Soil'
+    sub_img_folder = r'datasets/Soil/Cutting'
+    train_txt_path = r'datasets/Soil/train.txt'
+    test_txt_path = r'datasets/Soil/test.txt'
+    extra_save_dir = r'models/encoders/selective_scan/datasets/Soil'
     
     split_dataset(sub_img_folder, train_txt_path, test_txt_path, extra_save_dir)

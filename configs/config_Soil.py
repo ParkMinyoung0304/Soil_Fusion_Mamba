@@ -33,8 +33,16 @@ C.x_is_single_channel = True # True for raw depth, thermal and aolp/dolp(not aol
 C.train_source = osp.join(C.dataset_path, "train.txt")
 C.eval_source = osp.join(C.dataset_path, "test.txt")
 C.is_test = False
-C.num_train_imgs = 1974 #1975
-C.num_eval_imgs = 151 #152
+
+# 读取训练集和测试集的实际数量
+def count_lines(file_path):
+    with open(file_path, 'r') as f:
+        return sum(1 for line in f) -1 
+
+C.num_train_imgs = count_lines(C.train_source)  # 更新为实际训练集数量
+C.num_eval_imgs = count_lines(C.eval_source)    # 更新为实际测试集数量
+# C.num_train_imgs = 10  #临时测试
+# C.num_eval_imgs = 10    # 临时测试
 C.num_classes = 6
 C.class_names =  ['0', '1', '2', '3', '4','5']
 
@@ -76,8 +84,8 @@ C.eval_flip = False # True #
 C.eval_crop_size = [384, 384] # [height weight]
 
 """Store Config"""
-C.checkpoint_start_epoch = 10
-C.checkpoint_step = 10
+C.checkpoint_start_epoch = 1
+C.checkpoint_step = 1
 
 """Path Config"""
 def add_path(path):

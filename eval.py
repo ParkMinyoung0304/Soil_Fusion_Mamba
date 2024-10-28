@@ -73,7 +73,7 @@ class SegEvaluator(Evaluator):
         iou, mean_IoU, _, freq_IoU, mean_pixel_acc, pixel_acc = compute_score(hist, correct, labeled)
         result_line = print_iou(iou, freq_IoU, mean_pixel_acc, pixel_acc,
                                 self.dataset.class_names, show_no_back=False)
-        return result_line, mean_IoU
+        return result_line, mean_IoU, freq_IoU, mean_pixel_acc, pixel_acc
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -124,5 +124,5 @@ if __name__ == "__main__":
                                  config.eval_scale_array, config.eval_flip,
                                  all_dev, args.verbose, args.save_path,
                                  args.show_image, config)
-        _, mean_IoU = segmentor.run_eval(config.checkpoint_dir, args.epochs, config.val_log_file,
+        _, mean_IoU, freq_IoU, mean_pixel_acc, pixel_acc = segmentor.run_eval(config.checkpoint_dir, args.epochs, config.val_log_file,
                       config.link_val_log_file)

@@ -12,12 +12,13 @@ from engine.logger import get_logger
 from utils.pyt_utils import load_model, link_file, ensure_dir
 from utils.transforms import pad_image_to_shape, normalize
 
+
 logger = get_logger()
 
 
 class Evaluator(object):
     def __init__(self, dataset, class_num, norm_mean, norm_std, network, multi_scales, 
-                is_flip, devices, verbose=False, save_path=None, show_image=False, config=None):
+                is_flip, devices, verbose=False, save_path=None, show_image=False, config=None, current_epoch=10):
         self.eval_time = 0
         self.dataset = dataset
         self.ndata = self.dataset.get_length()
@@ -39,6 +40,7 @@ class Evaluator(object):
             ensure_dir(save_path)
         self.show_image = show_image
         self.config = config
+        self.current_epoch = current_epoch
 
     def run(self, model_path, model_indice, log_file, log_file_link):
         """There are four evaluation modes:
@@ -90,9 +92,9 @@ class Evaluator(object):
             logger.info("Load Model: %s" % model)
             self.val_func = self.network # load_model(self.network, model)
             if len(self.devices ) == 1:
-                result_line, mean_IoU = self.single_process_evalutation()
+                result_line, mean_IoU, freq_IoU, mean_pixel_acc, pixel_acc = self.single_process_evalutation()
             else:
-                result_line, mean_IoU = self.multi_process_evaluation()
+                result_line, mean_IoU, freq_IoU, mean_pixel_acc, pixel_acc = self.multi_process_evaluation()
 
             results.write('Model: ' + model + '\n')
             results.write(result_line)
@@ -101,7 +103,7 @@ class Evaluator(object):
 
         results.close()
         # return the overall mean_iou
-        return result_line, mean_IoU
+        return result_line, mean_IoU, freq_IoU, mean_pixel_acc, pixel_acc
     
     def run_eval(self, model_path, model_indice, log_file, log_file_link):
         """There are four evaluation modes:
@@ -157,9 +159,9 @@ class Evaluator(object):
             logger.info("Load Model: %s" % model)
             self.val_func = load_model(self.network, model)
             if len(self.devices ) == 1:
-                result_line, mean_IoU = self.single_process_evalutation()
+                result_line, mean_IoU, freq_IoU, mean_pixel_acc, pixel_acc = self.single_process_evalutation()
             else:
-                result_line, mean_IoU = self.multi_process_evaluation()
+                result_line, mean_IoU, freq_IoU, mean_pixel_acc, pixel_acc = self.multi_process_evaluation()
 
             results.write('Model: ' + model + '\n')
             results.write(result_line)
@@ -168,7 +170,7 @@ class Evaluator(object):
 
         results.close()
         # return the overall mean_iou
-        return result_line, mean_IoU
+        return result_line, mean_IoU, freq_IoU, mean_pixel_acc, pixel_acc
     
     
     def run_eval_during_train(self, model_path, model_indice, log_file, log_file_link):
@@ -218,9 +220,9 @@ class Evaluator(object):
             logger.info("Load Model: %s" % model)
             self.val_func = load_model(self.network, model)
             if len(self.devices ) == 1:
-                result_line, mean_IoU = self.single_process_evalutation()
+                result_line, mean_IoU, freq_IoU, mean_pixel_acc, pixel_acc = self.single_process_evalutation()
             else:
-                result_line, mean_IoU = self.multi_process_evaluation()
+                result_line, mean_IoU, freq_IoU, mean_pixel_acc, pixel_acc = self.multi_process_evaluation()
 
             results.write('Model: ' + model + '\n')
             results.write(result_line)
@@ -229,7 +231,7 @@ class Evaluator(object):
 
         results.close()
         # return the overall mean_iou
-        return result_line, mean_IoU
+        return result_line, mean_IoU, freq_IoU, mean_pixel_acc, pixel_acc
 
 
     def single_process_evalutation(self):
@@ -241,11 +243,11 @@ class Evaluator(object):
             dd = self.dataset[idx]
             results_dict = self.func_per_iteration(dd,self.devices[0], self.config)
             all_results.append(results_dict)
-        result_line, mean_IoU = self.compute_metric(all_results, self.config)
+        result_line, mean_IoU, freq_IoU, mean_pixel_acc, pixel_acc = self.compute_metric(all_results, self.config)
         logger.info(
             'Evaluation Elapsed Time: %.2fs' % (
                     time.perf_counter() - start_eval_time))
-        return result_line, mean_IoU
+        return result_line, mean_IoU, freq_IoU, mean_pixel_acc, pixel_acc
 
 
     def multi_process_evaluation(self):
@@ -280,11 +282,11 @@ class Evaluator(object):
         for p in procs:
             p.join()
 
-        result_line, mean_IoU = self.compute_metric(all_results, self.config)
+        result_line, mean_IoU, freq_IoU, mean_pixel_acc, pixel_acc = self.compute_metric(all_results, self.config)
         logger.info(
             'Evaluation Elapsed Time: %.2fs' % (
                     time.perf_counter() - start_eval_time))
-        return result_line, mean_IoU
+        return result_line, mean_IoU, freq_IoU, mean_pixel_acc, pixel_acc
 
     def worker(self, shred_list, device):
         start_load_time = time.time()
