@@ -2,7 +2,7 @@ import os
 import random
 import shutil
 
-def split_dataset(sub_img_folder, train_txt_path, test_txt_path, extra_save_dir=None, test_ratio=0.1):
+def split_dataset(sub_img_folder, train_txt_path, test_txt_path, extra_save_dir=None, test_ratio=0.2):
     """
     将数据集分割为训练集和测试集,并可选择保存到额外的路径
     

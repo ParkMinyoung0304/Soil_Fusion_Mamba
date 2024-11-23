@@ -78,25 +78,170 @@ if True:
             dC = dC.squeeze(1) if getattr(ctx, "squeeze_C", False) else dC
             return (du, ddelta, dA, dB, dC, dD, ddelta_bias, None, None)
 
+##base版本
+    # class CrossScan(torch.autograd.Function):
+    #     @staticmethod
+    #     def forward(ctx, x: torch.Tensor):
+    #         B, C, H, W = x.shape
+    #         ctx.shape = (B, C, H, W)
+    #         # print("+++++++++++++++++++++++++")
+    #         # print("H:",H)
+    #         # print("W:",W)
+    #         xs = x.new_empty((B, 4, C, H * W))
+    #         xs[:, 0] = x.flatten(2, 3)
+    #         xs[:, 1] = x.transpose(dim0=2, dim1=3).flatten(2, 3)
+    #         xs[:, 2:4] = torch.flip(xs[:, 0:2], dims=[-1])
+    #         return xs
+        
+    #     @staticmethod
+    #     def backward(ctx, ys: torch.Tensor):
+    #         # out: (b, k, d, l)
+    #         B, C, H, W = ctx.shape
+    #         L = H * W
+    #         ys = ys[:, 0:2] + ys[:, 2:4].flip(dims=[-1]).view(B, 2, -1, L)
+    #         y = ys[:, 0] + ys[:, 1].view(B, -1, W, H).transpose(dim0=2, dim1=3).contiguous().view(B, -1, L)
+    #         return y.view(B, -1, H, W)
+
+#悬空阶梯版本
+    # class CrossScan(torch.autograd.Function):
+    #     # 默认的 n 值
+    #     # n: int = 1  # 从第二行开始的偏移量，默认值为 1
+
+    #     @staticmethod
+    #     def forward(ctx, x: torch.Tensor):
+    #         B, C, H, W = x.shape
+    #         ctx.shape = (B, C, H, W)
+            
+    #         # 设置 k 为 H/2
+    #         k = int(W/3)  # 将 k 设置为 H 的一半
+
+    #         # 创建一个新的张量 xs，形状为 (B, 4, C, H * W)
+    #         xs = x.new_empty((B, 4, C, H * W))
+
+    #         # 使用 custom_scan 方法进行扫描
+    #         custom_output = CrossScan.custom_scan(x, k)
+
+    #         # 将 custom_scan 的结果填充到 xs 的对应维度中
+    #         xs[:, 0, :, :custom_output.shape[2]] = custom_output  # 填充到 xs 的第一个维度
+
+    #         # 填充第二个维度，使用转置和展平
+    #         xs[:, 1, :, :custom_output.shape[2]] = CrossScan.custom_scan(x.transpose(2, 3), k)
+
+    #         # 填充第三个和第四个维度，使用翻转
+    #         xs[:, 2, :, :custom_output.shape[2]] = torch.flip(xs[:, 0, :, :custom_output.shape[2]], dims=[-1])
+    #         xs[:, 3, :, :custom_output.shape[2]] = torch.flip(xs[:, 1, :, :custom_output.shape[2]], dims=[-1])
+
+    #         # 用零填充未填充的部分
+    #         # 计算实际填充的大小
+    #         filled_size = custom_output.shape[2]  # 实际填充的大小
+    #         if filled_size < H * W:
+    #             xs[:, :, :, filled_size:] = 0  # 将未填充的部分设置为零
+
+    #         return xs
+
+    #     @staticmethod
+    #     def backward(ctx, ys: torch.Tensor):
+    #         # out: (b, k, d, l)
+    #         B, C, H, W = ctx.shape
+    #         L = H * W
+    #         ys = ys[:, 0:2] + ys[:, 2:4].flip(dims=[-1]).view(B, 2, -1, L)
+    #         y = ys[:, 0] + ys[:, 1].view(B, -1, W, H).transpose(dim0=2, dim1=3).contiguous().view(B, -1, L)
+    #         return y.view(B, -1, H, W)
+
+    #     @staticmethod
+        # def custom_scan(x: torch.Tensor, k: int) -> torch.Tensor:
+        #     """
+        #     自定义扫描函数，根据参数 k 从输入张量中读取数据。
+
+        #     :param x: 输入张量，形状为 (B, C, H, W)
+        #     :param k: 每次读取的元素数量
+        #     :return: 处理后的输出张量
+        #     """
+        #     B, C, H, W = x.shape
+        #     output = []
+
+        #     # 输出 H * W 和 k 的值
+        #     # print(f"H * W: {H * W}, k: {k}")
+
+        #     # 计算在 n=1 时的正确长度
+        #     expected_length = k * H
+        #     # print(f"Expected output length when n=1: {expected_length}")
+
+        #     for h in range(H):
+        #         if h == 0:
+        #             output.append(x[:, :, h, :k])  # 读取第一行的前 k 个元素
+        #             # print(f"Row {h}: Scanned elements: {k}")  # 打印扫描的元素数量
+        #         else:
+        #             # 从第二行开始，按照规则读取
+        #             start_col = min(0, W - 1)  # 计算起始列，确保不超出边界
+        #             if start_col + k <= W:  # 确保可以读取 k 个元素
+        #                 end_col = start_col + k  # 结束列
+        #                 output.append(x[:, :, h, start_col:end_col])  # 读取当前行的 k 个元素
+        #                 # print(f"Row {h}: Scanned elements: {k}")  # 打印扫描的元素数量
+        #             else:
+        #                 # 如果无法读取 k 个元素，打印实际读取的元素数量
+        #                 actual_scanned = W - start_col if start_col < W else 0
+        #                 # print(f"Row {h}: Scanned elements: {actual_scanned}")  # 打印实际扫描的元素数量
+
+        #     # 将所有读取的部分连接在一起
+        #     output = torch.cat(output, dim=2)  # 在通道维度上连接
+        #     # 打印 output 的长度
+        #     actual_length = output.shape[2]  # 假设 output 的第一个维度是 B
+        #     # print(f"Actual output length: {actual_length}")
+        #     assert actual_length == expected_length, f"Output length mismatch: expected {expected_length}, got {actual_length}"
+        #     return output
+     
+##非悬空阶梯版本
     class CrossScan(torch.autograd.Function):
+
+        @staticmethod
+        def custom_scan(x: torch.Tensor) -> torch.Tensor:
+            """
+            Perform a diagonal zigzag scan by shifting start column on each line switch.
+            
+            :param x: 输入张量，形状为 (B, C, H, W)
+            :return: 处理后的输出张量
+            """
+            B, C, H, W = x.shape
+            output = []
+
+            # 从左向右扫描，每下一行开始列向右移动一位
+            shift = 0
+            for h in range(H):
+                if shift < W:
+                    output.append(x[:, :, h, shift:])
+                shift += 1
+
+            # 从右向左扫描，每上一行开始列向左移动一位
+            shift = 1
+            for h in range(H-1, -1, -1):
+                if shift < W:
+                    output.append(x[:, :, h, :W-shift].flip(dims=[-1]))
+                shift += 1
+            output = torch.cat(output, dim=2)  # 在通道维度上连接
+            return output
+
         @staticmethod
         def forward(ctx, x: torch.Tensor):
             B, C, H, W = x.shape
             ctx.shape = (B, C, H, W)
             xs = x.new_empty((B, 4, C, H * W))
-            xs[:, 0] = x.flatten(2, 3)
-            xs[:, 1] = x.transpose(dim0=2, dim1=3).flatten(2, 3)
-            xs[:, 2:4] = torch.flip(xs[:, 0:2], dims=[-1])
+            custom_output = CrossScan.custom_scan(x)
+            xs[:, 0, :, :custom_output.shape[2]] = custom_output  # 填充到 xs 的第一个维度
+            xs[:, 1, :, :custom_output.shape[2]] = CrossScan.custom_scan(x.transpose(2, 3))
+            xs[:, 2, :, :custom_output.shape[2]] = torch.flip(xs[:, 0, :, :custom_output.shape[2]], dims=[-1])
+            xs[:, 3, :, :custom_output.shape[2]] = torch.flip(xs[:, 1, :, :custom_output.shape[2]], dims=[-1])
             return xs
-        
+
         @staticmethod
         def backward(ctx, ys: torch.Tensor):
-            # out: (b, k, d, l)
             B, C, H, W = ctx.shape
             L = H * W
             ys = ys[:, 0:2] + ys[:, 2:4].flip(dims=[-1]).view(B, 2, -1, L)
-            y = ys[:, 0] + ys[:, 1].view(B, -1, W, H).transpose(dim0=2, dim1=3).contiguous().view(B, -1, L)
+            y = ys[:, 0] + ys[:, 1].view(B, -1, W, H).transpose(2, 3).contiguous().view(B, -1, L)
             return y.view(B, -1, H, W)
+
+
     
     class CrossMerge(torch.autograd.Function):
         @staticmethod
@@ -268,7 +413,7 @@ if True:
         x_dbl = torch.einsum("b k d l, k c d -> b k c l", xs, x_proj_weight)
         if x_proj_bias is not None:
             x_dbl = x_dbl + x_proj_bias.view(1, K, -1, 1)
-        dts, Bs, Cs = torch.split(x_dbl, [R, N, N], dim=2)
+        dts, Bs, Cs = torch.split(x_dbl, [self.dt_rank, self.d_state, self.d_state], dim=2)
         dts = torch.einsum("b k r l, k d r -> b k d l", dts, dt_projs_weight)
 
         xs = xs.view(B, -1, L).to(torch.float)
