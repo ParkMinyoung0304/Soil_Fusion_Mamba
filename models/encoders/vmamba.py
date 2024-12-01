@@ -102,7 +102,7 @@ if True:
     #         y = ys[:, 0] + ys[:, 1].view(B, -1, W, H).transpose(dim0=2, dim1=3).contiguous().view(B, -1, L)
     #         return y.view(B, -1, H, W)
 
-#悬空阶梯版本
+#悬空阶梯式版本（未实现）
     # class CrossScan(torch.autograd.Function):
     #     # 默认的 n 值
     #     # n: int = 1  # 从第二行开始的偏移量，默认值为 1
@@ -191,9 +191,58 @@ if True:
         #     assert actual_length == expected_length, f"Output length mismatch: expected {expected_length}, got {actual_length}"
         #     return output
      
-##非悬空阶梯版本
-    class CrossScan(torch.autograd.Function):
+##大阶梯版本
+    # class CrossScan(torch.autograd.Function):
 
+    #     @staticmethod
+    #     def custom_scan(x: torch.Tensor) -> torch.Tensor:
+    #         """
+    #         Perform a diagonal zigzag scan by shifting start column on each line switch.
+            
+    #         :param x: 输入张量，形状为 (B, C, H, W)
+    #         :return: 处理后的输出张量
+    #         """
+    #         B, C, H, W = x.shape
+    #         output = []
+
+    #         # 从左向右扫描，每下一行开始列向右移动一位
+    #         shift = 0
+    #         for h in range(H):
+    #             if shift < W:
+    #                 output.append(x[:, :, h, shift:])
+    #             shift += 1
+
+    #         # 从右向左扫描，每上一行开始列向左移动一位
+    #         shift = 1
+    #         for h in range(H-1, -1, -1):
+    #             if shift < W:
+    #                 output.append(x[:, :, h, :W-shift].flip(dims=[-1]))
+    #             shift += 1
+    #         output = torch.cat(output, dim=2)  # 在通道维度上连接
+    #         return output
+
+    #     @staticmethod
+    #     def forward(ctx, x: torch.Tensor):
+    #         B, C, H, W = x.shape
+    #         ctx.shape = (B, C, H, W)
+    #         xs = x.new_empty((B, 4, C, H * W))
+    #         custom_output = CrossScan.custom_scan(x)
+    #         xs[:, 0, :, :custom_output.shape[2]] = custom_output  # 填充到 xs 的第一个维度
+    #         xs[:, 1, :, :custom_output.shape[2]] = CrossScan.custom_scan(x.transpose(2, 3))
+    #         xs[:, 2, :, :custom_output.shape[2]] = torch.flip(xs[:, 0, :, :custom_output.shape[2]], dims=[-1])
+    #         xs[:, 3, :, :custom_output.shape[2]] = torch.flip(xs[:, 1, :, :custom_output.shape[2]], dims=[-1])
+    #         return xs
+
+    #     @staticmethod
+    #     def backward(ctx, ys: torch.Tensor):
+    #         B, C, H, W = ctx.shape
+    #         L = H * W
+    #         ys = ys[:, 0:2] + ys[:, 2:4].flip(dims=[-1]).view(B, 2, -1, L)
+    #         y = ys[:, 0] + ys[:, 1].view(B, -1, W, H).transpose(2, 3).contiguous().view(B, -1, L)
+    #         return y.view(B, -1, H, W)
+
+#垂直结构局部扫描
+    class CrossScan(torch.autograd.Function):
         @staticmethod
         def custom_scan(x: torch.Tensor) -> torch.Tensor:
             """
@@ -204,20 +253,13 @@ if True:
             """
             B, C, H, W = x.shape
             output = []
-
-            # 从左向右扫描，每下一行开始列向右移动一位
-            shift = 0
-            for h in range(H):
-                if shift < W:
-                    output.append(x[:, :, h, shift:])
-                shift += 1
-
-            # 从右向左扫描，每上一行开始列向左移动一位
-            shift = 1
-            for h in range(H-1, -1, -1):
-                if shift < W:
-                    output.append(x[:, :, h, :W-shift].flip(dims=[-1]))
-                shift += 1
+            k = 3
+            row_start = 0
+            while row_start < W:
+                row_end = min(row_start + k, W)
+                for h in range(H):
+                    output.append(x[:, :,h, row_start:row_end])
+                row_start = row_end
             output = torch.cat(output, dim=2)  # 在通道维度上连接
             return output
 
@@ -240,8 +282,6 @@ if True:
             ys = ys[:, 0:2] + ys[:, 2:4].flip(dims=[-1]).view(B, 2, -1, L)
             y = ys[:, 0] + ys[:, 1].view(B, -1, W, H).transpose(2, 3).contiguous().view(B, -1, L)
             return y.view(B, -1, H, W)
-
-
     
     class CrossMerge(torch.autograd.Function):
         @staticmethod
