@@ -4,7 +4,7 @@
 set -e
 
 # 设置训练脚本路径
-TRAIN_SCRIPT="/home/czh/Soli_Fusion_Mamba/train.py"
+TRAIN_SCRIPT="./train.py"
 
 # 执行训练脚本5次
 for i in {1..5}
