@@ -243,6 +243,27 @@ if True:
 
 #垂直结构局部扫描
     class CrossScan(torch.autograd.Function):
+        # @staticmethod
+        # def custom_scan(x: torch.Tensor) -> torch.Tensor:
+        #     """
+        #     Perform a diagonal zigzag scan by shifting start column on each line switch.
+            
+        #     :param x: 输入张量，形状为 (B, C, H, W)
+        #     :return: 处理后的输出张量
+        #     """
+        #     B, C, H, W = x.shape
+        #     output = []
+        #     k = 3
+        #     row_start = 0
+        #     while row_start < W:
+        #         row_end = min(row_start + k, W)
+        #         for h in range(H):
+        #             output.append(x[:, :,h, row_start:row_end])
+        #         row_start = row_end
+        #     output = torch.cat(output, dim=2)  # 在通道维度上连接
+        #     print(output.shape)
+        #     return output
+        
         @staticmethod
         def custom_scan(x: torch.Tensor) -> torch.Tensor:
             """
@@ -252,23 +273,29 @@ if True:
             :return: 处理后的输出张量
             """
             B, C, H, W = x.shape
+            k = 3  # 每次扫描的列数
+            num_splits = (W + k - 1) // k  # 计算需要多少次拆分
             output = []
-            k = 3
-            row_start = 0
-            while row_start < W:
-                row_end = min(row_start + k, W)
-                for h in range(H):
-                    output.append(x[:, :,h, row_start:row_end])
-                row_start = row_end
-            output = torch.cat(output, dim=2)  # 在通道维度上连接
-            return output
 
+            # 使用循环生成切片索引
+            for i in range(num_splits):
+                row_start = i * k
+                row_end = min((i + 1) * k, W)  # 控制最后一部分的宽度
+                # 使用切片操作避免多次张量拼接
+                output.append(x[:, :, :, row_start:row_end])
+            # 使用stack将多个切片合并成一个新的张量，而不是每次使用cat
+            output = torch.cat(output, dim=3)  # 在列维度拼接
+            output = output.view(B, C, -1)  # 将高度和拼接后的列宽度合并成一个维度，返回三维张量
+            return output
+        
         @staticmethod
         def forward(ctx, x: torch.Tensor):
             B, C, H, W = x.shape
             ctx.shape = (B, C, H, W)
             xs = x.new_empty((B, 4, C, H * W))
             custom_output = CrossScan.custom_scan(x)
+            # print("custom_output:",custom_output.shape)
+            # print("xs:",xs.shape)
             xs[:, 0, :, :custom_output.shape[2]] = custom_output  # 填充到 xs 的第一个维度
             xs[:, 1, :, :custom_output.shape[2]] = CrossScan.custom_scan(x.transpose(2, 3))
             xs[:, 2, :, :custom_output.shape[2]] = torch.flip(xs[:, 0, :, :custom_output.shape[2]], dims=[-1])
