@@ -241,7 +241,7 @@ if True:
     #         y = ys[:, 0] + ys[:, 1].view(B, -1, W, H).transpose(2, 3).contiguous().view(B, -1, L)
     #         return y.view(B, -1, H, W)
 
-#测试垂直结构局部扫描
+#测试垂直结构局部扫描####################
     class CrossScan(torch.autograd.Function):
         # @staticmethod
         # def custom_scan(x: torch.Tensor) -> torch.Tensor:
