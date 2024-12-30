@@ -103,7 +103,7 @@ class RGBXTransformer(nn.Module):
                 x_fuse = self.channel_attn_mamba[i](out_rgb.permute(0, 2, 3, 1).contiguous(), out_x.permute(0, 2, 3, 1).contiguous()).permute(0, 3, 1, 2).contiguous()
             elif not cam and not cma:
                 x_fuse = (out_rgb + out_x)
-            outs_fused.append(x_fuse)        
+            outs_fused.append(x_fuse)
         return outs_fused
 
     def forward(self, x_rgb, x_e):
