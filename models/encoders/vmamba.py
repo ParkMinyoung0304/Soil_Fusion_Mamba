@@ -78,29 +78,26 @@ if True:
             dC = dC.squeeze(1) if getattr(ctx, "squeeze_C", False) else dC
             return (du, ddelta, dA, dB, dC, dD, ddelta_bias, None, None)
 
-##base版本
-    # class CrossScan(torch.autograd.Function):
-    #     @staticmethod
-    #     def forward(ctx, x: torch.Tensor):
-    #         B, C, H, W = x.shape
-    #         ctx.shape = (B, C, H, W)
-    #         # print("+++++++++++++++++++++++++")
-    #         # print("H:",H)
-    #         # print("W:",W)
-    #         xs = x.new_empty((B, 4, C, H * W))
-    #         xs[:, 0] = x.flatten(2, 3)
-    #         xs[:, 1] = x.transpose(dim0=2, dim1=3).flatten(2, 3)
-    #         xs[:, 2:4] = torch.flip(xs[:, 0:2], dims=[-1])
-    #         return xs
+#base版本
+    class CrossScan(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx, x: torch.Tensor):
+            B, C, H, W = x.shape
+            ctx.shape = (B, C, H, W)
+            xs = x.new_empty((B, 4, C, H * W))
+            xs[:, 0] = x.flatten(2, 3)
+            xs[:, 1] = x.transpose(dim0=2, dim1=3).flatten(2, 3)
+            xs[:, 2:4] = torch.flip(xs[:, 0:2], dims=[-1])
+            return xs
         
-    #     @staticmethod
-    #     def backward(ctx, ys: torch.Tensor):
-    #         # out: (b, k, d, l)
-    #         B, C, H, W = ctx.shape
-    #         L = H * W
-    #         ys = ys[:, 0:2] + ys[:, 2:4].flip(dims=[-1]).view(B, 2, -1, L)
-    #         y = ys[:, 0] + ys[:, 1].view(B, -1, W, H).transpose(dim0=2, dim1=3).contiguous().view(B, -1, L)
-    #         return y.view(B, -1, H, W)
+        @staticmethod
+        def backward(ctx, ys: torch.Tensor):
+            # out: (b, k, d, l)
+            B, C, H, W = ctx.shape
+            L = H * W
+            ys = ys[:, 0:2] + ys[:, 2:4].flip(dims=[-1]).view(B, 2, -1, L)
+            y = ys[:, 0] + ys[:, 1].view(B, -1, W, H).transpose(dim0=2, dim1=3).contiguous().view(B, -1, L)
+            return y.view(B, -1, H, W)
 
 #悬空阶梯式版本（未实现）
     # class CrossScan(torch.autograd.Function):
@@ -242,7 +239,7 @@ if True:
     #         return y.view(B, -1, H, W)
 
 #测试垂直结构局部扫描####################
-    class CrossScan(torch.autograd.Function):
+    # class CrossScan(torch.autograd.Function):
         # @staticmethod
         # def custom_scan(x: torch.Tensor) -> torch.Tensor:
         #     """
@@ -263,52 +260,52 @@ if True:
         #     output = torch.cat(output, dim=2)  # 在通道维度上连接
         #     print(output.shape)
         #     return output
-        
-        @staticmethod
-        def custom_scan(x: torch.Tensor) -> torch.Tensor:
-            """
-            Perform a diagonal zigzag scan by shifting start column on each line switch.
+        #用这个
+        # @staticmethod
+        # def custom_scan(x: torch.Tensor) -> torch.Tensor:
+        #     """
+        #     Perform a diagonal zigzag scan by shifting start column on each line switch.
             
-            :param x: 输入张量，形状为 (B, C, H, W)
-            :return: 处理后的输出张量
-            """
-            B, C, H, W = x.shape
-            k = 3  # 每次扫描的列数
-            num_splits = (W + k - 1) // k  # 计算需要多少次拆分
-            output = []
+        #     :param x: 输入张量，形状为 (B, C, H, W)
+        #     :return: 处理后的输出张量
+        #     """
+        #     B, C, H, W = x.shape
+        #     k = 3  # 每次扫描的列数
+        #     num_splits = (W + k - 1) // k  # 计算需要多少次拆分
+        #     output = []
 
-            # 使用循环生成切片索引
-            for i in range(num_splits):
-                row_start = i * k
-                row_end = min((i + 1) * k, W)  # 控制最后一部分的宽度
-                # 使用切片操作避免多次张量拼接
-                output.append(x[:, :, :, row_start:row_end])
-            # 使用stack将多个切片合并成一个新的张量，而不是每次使用cat
-            output = torch.cat(output, dim=3)  # 在列维度拼接
-            output = output.view(B, C, -1)  # 将高度和拼接后的列宽度合并成一个维度，返回三维张量
-            return output
+        #     # 使用循环生成切片索引
+        #     for i in range(num_splits):
+        #         row_start = i * k
+        #         row_end = min((i + 1) * k, W)  # 控制最后一部分的宽度
+        #         # 使用切片操作避免多次张量拼接
+        #         output.append(x[:, :, :, row_start:row_end])
+        #     # 使用stack将多个切片合并成一个新的张量，而不是每次使用cat
+        #     output = torch.cat(output, dim=3)  # 在列维度拼接
+        #     output = output.view(B, C, -1)  # 将高度和拼接后的列宽度合并成一个维度，返回三维张量
+        #     return output
         
-        @staticmethod
-        def forward(ctx, x: torch.Tensor):
-            B, C, H, W = x.shape
-            ctx.shape = (B, C, H, W)
-            xs = x.new_empty((B, 4, C, H * W))
-            custom_output = CrossScan.custom_scan(x)
-            # print("custom_output:",custom_output.shape)
-            # print("xs:",xs.shape)
-            xs[:, 0, :, :custom_output.shape[2]] = custom_output  # 填充到 xs 的第一个维度
-            xs[:, 1, :, :custom_output.shape[2]] = CrossScan.custom_scan(x.transpose(2, 3))
-            xs[:, 2, :, :custom_output.shape[2]] = torch.flip(xs[:, 0, :, :custom_output.shape[2]], dims=[-1])
-            xs[:, 3, :, :custom_output.shape[2]] = torch.flip(xs[:, 1, :, :custom_output.shape[2]], dims=[-1])
+        # @staticmethod
+        # def forward(ctx, x: torch.Tensor):
+        #     B, C, H, W = x.shape
+        #     ctx.shape = (B, C, H, W)
+        #     xs = x.new_empty((B, 4, C, H * W))
+        #     custom_output = CrossScan.custom_scan(x)
+        #     # print("custom_output:",custom_output.shape)
+        #     # print("xs:",xs.shape)
+        #     xs[:, 0, :, :custom_output.shape[2]] = custom_output  # 填充到 xs 的第一个维度
+        #     xs[:, 1, :, :custom_output.shape[2]] = CrossScan.custom_scan(x.transpose(2, 3))
+        #     xs[:, 2, :, :custom_output.shape[2]] = torch.flip(xs[:, 0, :, :custom_output.shape[2]], dims=[-1])
+        #     xs[:, 3, :, :custom_output.shape[2]] = torch.flip(xs[:, 1, :, :custom_output.shape[2]], dims=[-1])
             return xs
 
-        @staticmethod
-        def backward(ctx, ys: torch.Tensor):
-            B, C, H, W = ctx.shape
-            L = H * W
-            ys = ys[:, 0:2] + ys[:, 2:4].flip(dims=[-1]).view(B, 2, -1, L)
-            y = ys[:, 0] + ys[:, 1].view(B, -1, W, H).transpose(2, 3).contiguous().view(B, -1, L)
-            return y.view(B, -1, H, W)
+        # @staticmethod
+        # def backward(ctx, ys: torch.Tensor):
+        #     B, C, H, W = ctx.shape
+        #     L = H * W
+        #     ys = ys[:, 0:2] + ys[:, 2:4].flip(dims=[-1]).view(B, 2, -1, L)
+        #     y = ys[:, 0] + ys[:, 1].view(B, -1, W, H).transpose(2, 3).contiguous().view(B, -1, L)
+        #     return y.view(B, -1, H, W)
     
     class CrossMerge(torch.autograd.Function):
         @staticmethod
@@ -1741,14 +1738,20 @@ class Cross_Mamba_Attention_SSM(nn.Module):
 
         y_rgb = selective_scan(
             x_rgb, dt_rgb,
-            A_rgb, B_rgb, C_e, self.D_1.float(),
-            delta_bias=self.dt_proj_1.bias.float(),
+            # A_rgb, B_rgb, C_e, self.D_1.float(),
+            # A_rgb, B_rgb, C_rgb, self.D_1.float(),
+            # delta_bias=self.dt_proj_1.bias.float(),
+            A_e, B_e, C_e, self.D_2.float(),
+            delta_bias=self.dt_proj_2.bias.float(),
             delta_softplus=True,
         )
         y_e = selective_scan(
             x_e, dt_e,
-            A_e, B_e, C_rgb, self.D_2.float(),
-            delta_bias=self.dt_proj_2.bias.float(),
+            # A_e, B_e, C_rgb, self.D_2.float(),
+            # A_e, B_e, C_e, self.D_2.float(),
+            # delta_bias=self.dt_proj_2.bias.float(),
+            A_rgb, B_rgb, C_rgb, self.D_1.float(),
+            delta_bias=self.dt_proj_1.bias.float(),
             delta_softplus=True,
         )
         # assert out_y.dtype == torch.float

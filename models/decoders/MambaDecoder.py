@@ -177,9 +177,9 @@ class MambaDecoder(nn.Module):
 
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]
 
-        self.layers_up = nn.ModuleList()
-        for i_layer in range(self.num_layers):
-            if i_layer == 0:
+        self.layers_up = nn.ModuleList()  #创建了一个空的 ModuleList
+        for i_layer in range(self.num_layers):    #根据 self.num_layers 的数量，为每一层循环构建一个特定的上采样层
+            if i_layer == 0:  #第一层的特殊处理
                 # B, 768, 15, 20 -> B, 384, 30, 40
                 layer_up = PatchExpand(
                     input_resolution=(self.patches_resolution[0] // (2 ** (self.num_layers - 1 - i_layer)),
@@ -191,7 +191,7 @@ class MambaDecoder(nn.Module):
                 # B, 30, 40, 384 -> B, 60, 80, 192
                 # B, 60, 80, 192 -> B, 120, 160, 96
                 # B, 120, 160, 96 -> B, 120, 160, 96
-                layer_up = Mamba_up(dim=int(embed_dim * 2 ** (self.num_layers - 1 - i_layer)),
+                layer_up = Mamba_up(dim=int(embed_dim * 2 ** (self.num_layers - 1 - i_layer)), #控制输出维度
                                          input_resolution=(
                                          self.patches_resolution[0] // (2 ** (self.num_layers - 1 - i_layer)),
                                          self.patches_resolution[1] // (2 ** (self.num_layers - 1 - i_layer))),
@@ -219,24 +219,38 @@ class MambaDecoder(nn.Module):
         self.output = nn.Conv2d(in_channels=embed_dim, out_channels=self.num_classes, kernel_size=1, bias=False)
 
         
-    def forward_up_features(self, inputs):  # B, C, H, W
+    def forward_up_features(self, inputs, outs_rgb):  # B, C, H, W
+        ##############打印一下inputs############################
+        # print("Inputs to forward_up_features:")
+        # print("Type:", type(inputs))
+        # if isinstance(inputs, list):
+        #     print("Number of inputs:", len(inputs))
+        #     for i, input_tensor in enumerate(inputs):
+        #         print(f"Input {i} shape:", input_tensor.shape)
+        # else:
+        #     print("Shape:", inputs.shape)    
+
+
         if not self.deep_supervision:
             for inx, layer_up in enumerate(self.layers_up):
                 if inx == 0:
                     x = inputs[3 - inx]  # B, 768, 15, 20
+                    # print("Before operation, input[3-inx] shape:", x.shape, "Type:", x.dtype, "Device:", x.device)
                     x = x.permute(0, 2, 3, 1).contiguous()  # B, 15, 20, 768
                     y = layer_up(x)  # B, 30, 40, 384
+                    # print("After layer_up, y shape:", y.shape, "Type:", y.dtype, "Device:", y.device)
                 else:
                     # interpolate y to input size (only pst900 dataset needs)
                     B, C, H, W = inputs[3 - inx].shape
                     y = F.interpolate(y.permute(0, 3, 1, 2).contiguous(), size=(H, W), mode='bilinear', align_corners=False).permute(0, 2, 3, 1).contiguous()
                     
-                    x = y + inputs[3 - inx].permute(0, 2, 3, 1).contiguous()
+                    x = y + inputs[3 - inx].permute(0, 2, 3, 1).contiguous() + 2*outs_rgb[3 - inx].permute(0, 2, 3, 1).contiguous()
+                    # x = y + inputs[3 - inx].permute(0, 2, 3, 1).contiguous()
+                    # print("After addition, x shape:", x.shape, "Type:", x.dtype, "Device:", x.device)
                     y = layer_up(x)
-
             x = self.norm_up(y)
-
             return x
+        
         else:
             # if deep supervision
             x_upsample = []
@@ -256,9 +270,9 @@ class MambaDecoder(nn.Module):
 
             return x, x_upsample
     
-    def forward(self, inputs):
+    def forward(self, inputs, outs_rgb):
         if not self.deep_supervision:
-            x = self.forward_up_features(inputs) # B, H, W, C
+            x = self.forward_up_features(inputs, outs_rgb) # B, H, W, C
             x_last = self.up_x4(x, self.patch_size)
             return x_last
         else:

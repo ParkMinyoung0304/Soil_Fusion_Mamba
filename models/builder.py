@@ -52,7 +52,7 @@ class EncoderDecoder(nn.Module):
             from .encoders.dual_vmamba_sub_attn import mit_b2 as backbone
             self.backbone = backbone(norm_fuse=norm_layer)
         elif cfg.backbone == 'sigma_tiny':
-            logger.info('Using backbone: V-MAMBA')
+            logger.info('Using backbone: V-MAMBA_sigma_tiny')
             self.channels = [96, 192, 384, 768]
             from .encoders.dual_vmamba import vssm_tiny as backbone
             self.backbone = backbone()
@@ -126,13 +126,18 @@ class EncoderDecoder(nn.Module):
                 mode='fan_in', nonlinearity='relu')
 
     def encode_decode(self, rgb, modal_x):
-        """Encode images with backbone and decode into a semantic segmentation
-        map of the same size as input."""
+        """Encode images with backbone and decode into a semantic segmentation map."""
         if not self.deep_supervision:
             orisize = rgb.shape
-            x = self.backbone(rgb, modal_x)
-            out = self.decode_head.forward(x)
+            x, outs_rgb = self.backbone(rgb, modal_x)
+            
+            # 添加类别权重来处理类别不平衡
+            class_weights = torch.tensor([1.0, 1.0, 1.2, 2.0, 2.0, 0.0]).cuda()
+            self.criterion = nn.CrossEntropyLoss(weight=class_weights, reduction='mean', ignore_index=255)
+            
+            out = self.decode_head.forward(x, outs_rgb)
             out = F.interpolate(out, size=orisize[2:], mode='bilinear', align_corners=False)
+            
             if self.aux_head:
                 aux_fm = self.aux_head(x[self.aux_index])
                 aux_fm = F.interpolate(aux_fm, size=orisize[2:], mode='bilinear', align_corners=False)
@@ -140,7 +145,7 @@ class EncoderDecoder(nn.Module):
             return out
         else:
             x = self.backbone(rgb, modal_x)
-            x_last, x_output_0, x_output_1, x_output_2 = self.decode_head.forward(x)
+            x_last, x_output_0, x_output_1, x_output_2 = self.decode_head.forward(x, outs_rgb)
             return x_last, x_output_0, x_output_1, x_output_2
 
     def forward(self, rgb, modal_x, label=None):
