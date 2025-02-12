@@ -10,16 +10,53 @@ from engine.logger import get_logger
 
 logger = get_logger()
 
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=None, gamma=2, reduction='mean', ignore_index=255):
+        super(FocalLoss, self).__init__()
+        self.gamma = gamma
+        self.reduction = reduction
+        self.ignore_index = ignore_index
+        if alpha is None:
+            self.alpha = torch.tensor([1.0, 1.0, 1.2, 1.5, 2.0, 0.0]).cuda()
+        else:
+            self.alpha = alpha.cuda()
+
+    def forward(self, inputs, targets):
+        ce_loss = F.cross_entropy(inputs, targets, reduction='none', ignore_index=self.ignore_index)
+        pt = torch.exp(-ce_loss)
+        
+        # 获取每个样本对应的类别权重
+        alpha = self.alpha[targets]
+        # 忽略的位置设置权重为0
+        alpha[targets == self.ignore_index] = 0
+        
+        focal_loss = alpha * (1-pt)**self.gamma * ce_loss
+
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        return focal_loss
+
 class EncoderDecoder(nn.Module):
     def __init__(self, cfg=None, criterion=None, norm_layer=nn.BatchNorm2d):
         super(EncoderDecoder, self).__init__()
         self.channels = [64, 128, 320, 512]
         self.norm_layer = norm_layer
         
-        # 在初始化时设置类别权重
-        class_weights = torch.tensor([1.0, 1.0, 1.2, 1.5, 2.0, 0.0]).cuda()
-        print("Initial class_weights:", class_weights)  # 打印初始的类别权重
-        self.criterion = nn.CrossEntropyLoss(weight=class_weights, reduction='mean', ignore_index=255) if criterion is None else criterion
+        # 使用Focal Loss替代CrossEntropyLoss
+        class_weights = torch.tensor([1.0, 1.0, 1.2, 1.5, 2.0, 0.0])
+        print("Initial class_weights:", class_weights)
+        
+        if criterion is None:
+            self.criterion = FocalLoss(
+                alpha=class_weights,  # 类别权重
+                gamma=2,              # focal loss的gamma参数
+                reduction='mean',
+                ignore_index=255
+            )
+        else:
+            self.criterion = criterion
         
         # import backbone and decoder
         if cfg.backbone == 'swin_s':
