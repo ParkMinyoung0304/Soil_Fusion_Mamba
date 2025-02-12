@@ -1,6 +1,6 @@
 
 <div align="center">
-<h1> Sigma: Siamese Mamba Network for Multi-Modal Semantic Segmentation </h1>
+<h1> Soil Fusion Mamba: Soil Fusion Mamba Network for Multi-Modal Soil Segmentation </h1>
 
 [Zifu Wan](https://zifuwan.github.io/)<sup>1</sup>, [Yuhao Wang](https://924973292.github.io//)<sup>2</sup>, [Silong Yong](https://silongyong.github.io/)<sup>1</sup>, [Pingping Zhang](https://scholar.google.com/citations?user=MfbIbuEAAAAJ&hl=zh-CN)<sup>2</sup>, [Simon Stepputtis](https://simonstepputtis.com/)<sup>1</sup>, [Katia Sycara](https://scholar.google.com/citations?user=VWv6a9kAAAAJ&hl=en)<sup>1</sup>, [Yaqi Xie](https://yaqi-xie.me/)<sup>1</sup></sup>
 
@@ -52,11 +52,10 @@ Install pytorch, cuda and cudnn, then install other dependencies via:
 
 ### Datasets
 
-1. We use four datasets, including both RGB-Thermal and RGB-Depth datasets:
-    - [RGB-Thermal MFNet](https://github.com/haqishen/MFNet-pytorch)
-    - [RGB-Thermal PST900](https://github.com/ShreyasSkandanS/pst900_thermal_rgb)
-    - [RGB-Depth NYU Depth V2](https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html)
-    - [RGB-Depth SUN-RGBD](https://rgbd.cs.princeton.edu/)
+1. We use Three datasets, including both Surface Soil and Soil Profile datasets:
+    - [Surface Soil](Data Privacy)
+    - [Soil Profile](Data Privacy)
+    - [Mexican soil profile](https://data.mendeley.com/datasets/v9krcvzv27/1)
 
     Please refer to the original dataset websites for more details. You can directly download the processed RGB-Depth datasets from [DFormer](https://github.com/VCIP-RGBD/DFormer?tab=readme-ov-file), though you may need to make small modifications to the txt files.
 
