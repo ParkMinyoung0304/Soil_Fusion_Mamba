@@ -97,9 +97,9 @@ Install pytorch, cuda and cudnn, then install other dependencies via:
 ### Training
 1. Please download the pretrained [VMamba](https://github.com/MzeroMiko/VMamba) weights:
 
-    - [VMamba_Tiny]([https://github.com/zifuwan/Sigma/blob/main/pretrained/vmamba/vssmtiny_dp01_ckpt_epoch_292.pth](https://drive.google.com/file/d/1W0EFQHvX4Cl6krsAwzlR-VKqQxfWEdM8/view?usp=drive_link)).
-    - [VMamba_Small]([https://github.com/zifuwan/Sigma/blob/main/pretrained/vmamba/vssmsmall_dp03_ckpt_epoch_238.pth](https://drive.google.com/file/d/1671QXJ-faiNX4cYUlXxf8kCpAjeA4Oah/view?usp=drive_link)).
-    - [VMamba_Base]([https://github.com/zifuwan/Sigma/blob/main/pretrained/vmamba/vssmbase_dp06_ckpt_epoch_241.pth](https://drive.google.com/file/d/1qdH-CQxyUFLq6hElxCANz19IoS-_Cm1L/view?usp=drive_link)).
+    - [VMamba_Tiny](https://drive.google.com/file/d/1W0EFQHvX4Cl6krsAwzlR-VKqQxfWEdM8/view?usp=drive_link).
+    - [VMamba_Small](https://drive.google.com/file/d/1671QXJ-faiNX4cYUlXxf8kCpAjeA4Oah/view?usp=drive_link).
+    - [VMamba_Base](https://drive.google.com/file/d/1qdH-CQxyUFLq6hElxCANz19IoS-_Cm1L/view?usp=drive_link).
 
     <u> Please put them under `pretrained/vmamba/`. </u>
 
@@ -147,35 +147,16 @@ Install pytorch, cuda and cudnn, then install other dependencies via:
 
 We provide our trained weights on the four datasets:
 
-### MFNet (9 categories)
+### MFNet (5 categories)
 | Architecture | Backbone | mIOU | Weight |
 |:---:|:---:|:---:|:---:|
 | Sigma | VMamba-T | 60.2% | [Sigma-T-MFNet](https://drive.google.com/file/d/1N9UU9G5K8qxKsZOuEzSLiCGXC5XCaMaU/view?usp=drive_link) |
 | Sigma | VMamba-S | 61.1% | [Sigma-S-MFNet](https://drive.google.com/file/d/1heHnyvDTSa2oYxAD5wcgpIY3OZ198Cr2/view?usp=drive_link) |
 | Sigma | VMamba-B | 61.3% | [Sigma-B-MFNet](https://drive.google.com/file/d/1an6pqLeEYHZZLOmfyY8A3ooKP8ZVMU93/view?usp=drive_link) |
 
-### PST900 (5 categories)
-| Architecture | Backbone | mIOU | Weight |
-|:---:|:---:|:---:|:---:| 
-| Sigma | VMamba-T | 88.6% | [Sigma-T-PST](https://drive.google.com/file/d/1Qx_alwSmxj_8TqCO0RD6VQvhcwp-RQ-e/view?usp=drive_link) |
-| Sigma | VMamba-S | 87.8% | [Sigma-S-PST](https://drive.google.com/file/d/1iHL0fLtV7F2s7tm_OrCq7vsqYJPuIF6q/view?usp=drive_link) |
-
-### NYU Depth V2 (40 categories)
-| Architecture | Backbone | mIOU | Weight |
-|:---:|:---:|:---:|:---:|
-| Sigma | VMamba-T | 53.9% | [Sigma-T-NYU](https://drive.google.com/file/d/15p2EePJj2sGKoIxXUxMNHq7vvplC8Gcd/view?usp=drive_link) |
-| Sigma | VMamba-S | 57.0% | [Sigma-S-NYU](https://drive.google.com/file/d/17afDv4BN69m66N3pfwTFnpBSXIUvlkwk/view?usp=drive_link) |
-
-### SUN RGB-D (37 categories)
-| Architecture | Backbone | mIOU | Weight |
-|:---:|:---:|:---:|:---:| 
-| Sigma | VMamba-T | 50.0% | [Sigma-T-SUN](https://drive.google.com/file/d/16mHj7AiEjkIWm77wBHO0dn7DQbGMljTM/view?usp=drive_link) |
-| Sigma | VMamba-S | 52.4% | [Sigma-S-SUN](https://drive.google.com/file/d/1PC8_Oj-m4yf-k6BQ4gBlGUdyOnG3xTsP/view?usp=drive_link) |
-
 ## 🙏Acknowledgements
 
-Our dataloader codes are based on [CMX](https://github.com/huaaaliu/RGBX_Semantic_Segmentation). Our Mamba codes are adapted from [Mamba](https://github.com/state-spaces/mamba) and [VMamba](https://github.com/MzeroMiko/VMamba). We thank the authors for releasing their code!
-We also appreciate [DFormer](https://github.com/VCIP-RGBD/DFormer?tab=readme-ov-file) for providing their processed RGB-Depth datasets.
+Our dataloader codes are based on [CMX](https://github.com/huaaaliu/RGBX_Semantic_Segmentation). Our Mamba codes are adapted from [Mamba](https://github.com/state-spaces/mamba) 、 [VMamba](https://github.com/MzeroMiko/VMamba) and [Fusion Mamba](https://github.com/zifuwan/Sigma). We thank the authors for releasing their code!
 
 ## 📧Contact
 
