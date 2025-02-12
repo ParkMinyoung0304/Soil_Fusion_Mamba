@@ -11,10 +11,16 @@ from engine.logger import get_logger
 logger = get_logger()
 
 class EncoderDecoder(nn.Module):
-    def __init__(self, cfg=None, criterion=nn.CrossEntropyLoss(reduction='mean', ignore_index=255), norm_layer=nn.BatchNorm2d):
+    def __init__(self, cfg=None, criterion=None, norm_layer=nn.BatchNorm2d):
         super(EncoderDecoder, self).__init__()
         self.channels = [64, 128, 320, 512]
         self.norm_layer = norm_layer
+        
+        # 在初始化时设置类别权重
+        class_weights = torch.tensor([1.0, 1.0, 1.2, 1.5, 2.0, 0.0]).cuda()
+        print("Initial class_weights:", class_weights)  # 打印初始的类别权重
+        self.criterion = nn.CrossEntropyLoss(weight=class_weights, reduction='mean', ignore_index=255) if criterion is None else criterion
+        
         # import backbone and decoder
         if cfg.backbone == 'swin_s':
             logger.info('Using backbone: Swin-Transformer-small')
@@ -107,7 +113,6 @@ class EncoderDecoder(nn.Module):
             from .decoders.fcnhead import FCNHead
             self.decode_head = FCNHead(in_channels=self.channels[-1], kernel_size=3, num_classes=cfg.num_classes, norm_layer=norm_layer)
 
-        self.criterion = criterion
         if self.criterion:
             self.init_weights(cfg, pretrained=cfg.pretrained_model)
     
@@ -130,10 +135,6 @@ class EncoderDecoder(nn.Module):
         if not self.deep_supervision:
             orisize = rgb.shape
             x, outs_rgb = self.backbone(rgb, modal_x)
-            
-            # 添加类别权重来处理类别不平衡
-            class_weights = torch.tensor([1.0, 1.0, 1.2, 2.0, 2.0, 0.0]).cuda()
-            self.criterion = nn.CrossEntropyLoss(weight=class_weights, reduction='mean', ignore_index=255)
             
             out = self.decode_head.forward(x, outs_rgb)
             out = F.interpolate(out, size=orisize[2:], mode='bilinear', align_corners=False)

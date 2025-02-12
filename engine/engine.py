@@ -90,31 +90,45 @@ class Engine(object):
         logger.info("Saving checkpoint to file {}".format(path))
         t_start = time.time()
 
-        state_dict = {}
+        try:
+            state_dict = {}
+            from collections import OrderedDict
+            new_state_dict = OrderedDict()
+            
+            # 使用cpu()将模型状态转移到CPU上再保存
+            for k, v in self.state.model.state_dict().items():
+                key = k
+                if k.split('.')[0] == 'module':
+                    key = k[7:]
+                new_state_dict[key] = v.cpu()  # 添加.cpu()
+            
+            state_dict['model'] = new_state_dict
+            state_dict['optimizer'] = self.state.optimizer.state_dict()
+            state_dict['epoch'] = self.state.epoch
+            state_dict['iteration'] = self.state.iteration
 
-        from collections import OrderedDict
-        new_state_dict = OrderedDict()
-        for k, v in self.state.model.state_dict().items():
-            key = k
-            # multi-gpu model contains 'module'. So I commented this line. Now, training with multiple gpus requires to test with multiple gpus.
-            if k.split('.')[0] == 'module':
-                key = k[7:]
-            new_state_dict[key] = v
-        state_dict['model'] = new_state_dict
-        state_dict['optimizer'] = self.state.optimizer.state_dict()
-        state_dict['epoch'] = self.state.epoch
-        state_dict['iteration'] = self.state.iteration
+            # 使用临时文件保存
+            tmp_path = path + '.tmp'
+            torch.save(state_dict, tmp_path, _use_new_zipfile_serialization=False)  # 添加参数
+            os.replace(tmp_path, path)
+            
+            del state_dict
+            del new_state_dict
+            
+            t_end = time.time()
+            logger.info(
+                "Save checkpoint to file {}, "
+                "Time usage:\n\tprepare checkpoint: {}, IO: {}".format(
+                    path, t_start, t_end - t_start))
+                
+        except Exception as e:
+            logger.error(f"Error saving checkpoint: {str(e)}")
+            # 如果常规保存失败，尝试只保存模型权重
+            try:
+                torch.save(self.state.model.state_dict(), path, _use_new_zipfile_serialization=False)
+            except Exception as e:
+                logger.error(f"Failed to save even model weights: {str(e)}")
 
-        t_iobegin = time.time()
-        torch.save(state_dict, path)
-        del state_dict
-        del new_state_dict
-        t_end = time.time()
-        logger.info(
-            "Save checkpoint to file {}, "
-            "Time usage:\n\tprepare checkpoint: {}, IO: {}".format(
-                path, t_iobegin - t_start, t_end - t_iobegin))
-    
     def link_tb(self, source, target):
         ensure_dir(source)
         ensure_dir(target)
